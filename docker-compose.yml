@@ -9,6 +9,7 @@ services:
       POSTGRES_USER: brahamsbot
       POSTGRES_PASSWORD: brahamsbot123
       POSTGRES_DB: brahamsbot_db
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5432:5432"
     volumes:

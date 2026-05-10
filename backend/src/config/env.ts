@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
+// Cargar .env
 dotenv.config();
 
 // Schema de validación para variables de entorno
@@ -20,7 +21,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
 
   // Groq
-  GROQ_API_KEY: z.string(),
+  GROQ_API_KEY: z.string().optional(),
   GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
 
   // WhatsApp

@@ -6,9 +6,9 @@ export const pool = new Pool({
   host: env.DB_HOST,
   port: env.DB_PORT,
   user: env.DB_USER,
-  password: env.DB_PASSWORD,
+  // Sin password para desarrollo local con trust auth
   database: env.DB_NAME,
-  max: 20, // Máximo de conexiones en el pool
+  max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });

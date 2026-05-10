@@ -1,0 +1,67 @@
+# Dependencias
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variables de entorno
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Cache
+.cache/
+.parcel-cache/
+.vite/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Testing
+coverage/
+.nyc_output/
+
+# PostgreSQL
+*.sql.backup
+pgdata/
+
+# WhatsApp sessions
+backend/whatsapp-sessions/
+backend/auth_info/
+*.session.json
+
+# Uploads
+uploads/
+temp/
+
+# TypeScript
+*.tsbuildinfo
+
+# Lock files (opcional, descomenta si prefieres no versionar)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

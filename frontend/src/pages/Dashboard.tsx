@@ -2,68 +2,70 @@ import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Bot, Users, TrendingUp, Sparkles, Zap, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import apiService from '../services/api.service';
 
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  // Datos para gráficos
-  const conversationsData = [
-    { hour: '09:00', conversaciones: 12 },
-    { hour: '10:00', conversaciones: 19 },
-    { hour: '11:00', conversaciones: 15 },
-    { hour: '12:00', conversaciones: 28 },
-    { hour: '13:00', conversaciones: 22 },
-    { hour: '14:00', conversaciones: 34 },
-    { hour: '15:00', conversaciones: 25 },
-  ];
+  // Obtener datos del backend
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['stats'],
+    queryFn: () => apiService.getStats(),
+    refetchInterval: 30000, // Actualizar cada 30 segundos
+  });
 
-  const responseTimeData = [
-    { day: 'Lun', tiempo: 2.1 },
-    { day: 'Mar', tiempo: 1.8 },
-    { day: 'Mié', tiempo: 1.5 },
-    { day: 'Jue', tiempo: 1.3 },
-    { day: 'Vie', tiempo: 1.2 },
-    { day: 'Sáb', tiempo: 1.4 },
-    { day: 'Dom', tiempo: 1.6 },
-  ];
+  const { data: conversationsData = [], isLoading: conversationsLoading } = useQuery({
+    queryKey: ['conversations-by-hour'],
+    queryFn: () => apiService.getConversationsByHour(),
+    refetchInterval: 60000, // Actualizar cada minuto
+  });
 
-  // Stats mejorados
-  const stats = [
-    {
-      title: 'Conversaciones Hoy',
-      value: '156',
-      change: '+23%',
-      trend: 'up',
-      icon: MessageSquare,
-      gradient: 'from-blue-500 to-cyan-500',
-    },
-    {
-      title: 'IA Automation',
-      value: '89%',
-      change: '+5%',
-      trend: 'up',
-      icon: Bot,
-      gradient: 'from-purple-500 to-pink-500',
-    },
-    {
-      title: 'Clientes Activos',
-      value: '2,847',
-      change: '+12%',
-      trend: 'up',
-      icon: Users,
-      gradient: 'from-orange-500 to-red-500',
-    },
-    {
-      title: 'Satisfacción',
-      value: '94%',
-      change: '+2%',
-      trend: 'up',
-      icon: TrendingUp,
-      gradient: 'from-green-500 to-emerald-500',
-    },
-  ];
+  const { data: responseTimeData = [], isLoading: responseTimeLoading } = useQuery({
+    queryKey: ['response-time'],
+    queryFn: () => apiService.getResponseTime(),
+    refetchInterval: 300000, // Actualizar cada 5 minutos
+  });
+
+  // Stats mejorados con datos reales
+  const stats = statsData
+    ? [
+        {
+          title: 'Conversaciones Hoy',
+          value: statsData.conversationsToday.toString(),
+          change: statsData.conversationsTodayChange,
+          trend: 'up' as const,
+          icon: MessageSquare,
+          gradient: 'from-blue-500 to-cyan-500',
+        },
+        {
+          title: 'IA Automation',
+          value: `${statsData.aiAutomation}%`,
+          change: statsData.aiAutomationChange,
+          trend: 'up' as const,
+          icon: Bot,
+          gradient: 'from-purple-500 to-pink-500',
+        },
+        {
+          title: 'Clientes Activos',
+          value: statsData.activeCustomers.toLocaleString(),
+          change: statsData.activeCustomersChange,
+          trend: 'up' as const,
+          icon: Users,
+          gradient: 'from-orange-500 to-red-500',
+        },
+        {
+          title: 'Satisfacción',
+          value: `${statsData.satisfaction}%`,
+          change: statsData.satisfactionChange,
+          trend: 'up' as const,
+          icon: TrendingUp,
+          gradient: 'from-green-500 to-emerald-500',
+        },
+      ]
+    : [];
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -110,7 +112,15 @@ export default function Dashboard() {
             <motion.div
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
+              className="flex gap-3"
             >
+              <Button
+                onClick={() => navigate('/inbox')}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Inbox
+              </Button>
               <Button
                 onClick={() => navigate('/whatsapp-setup')}
                 className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg"
@@ -126,13 +136,24 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Grid Animado */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {stats.map((stat, index) => (
+        {statsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="pt-6">
+                  <div className="h-20 bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {stats.map((stat, index) => (
             <motion.div key={index} variants={itemVariants}>
               <Card className="relative overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
                 <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-5`} />
@@ -154,7 +175,8 @@ export default function Dashboard() {
               </Card>
             </motion.div>
           ))}
-        </motion.div>
+          </motion.div>
+        )}
 
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

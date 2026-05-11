@@ -1,35 +1,35 @@
-import pool from '../config/database';
+import db from '../config/database';
 
 const migrations = [
   // Tabla de negocios
   `
   CREATE TABLE IF NOT EXISTS businesses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
     description TEXT,
-    industry VARCHAR(100),
-    phone VARCHAR(50),
-    email VARCHAR(255),
-    website VARCHAR(255),
+    industry TEXT,
+    phone TEXT,
+    email TEXT,
+    website TEXT,
     knowledge_base TEXT NOT NULL,
-    ai_personality VARCHAR(100) DEFAULT 'amigable y profesional',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ai_personality TEXT DEFAULT 'amigable y profesional',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
   );
   `,
 
   // Tabla de conversaciones
   `
   CREATE TABLE IF NOT EXISTS conversations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    business_id UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
-    customer_phone VARCHAR(50) NOT NULL,
-    customer_name VARCHAR(255),
-    channel VARCHAR(20) NOT NULL CHECK (channel IN ('whatsapp', 'telegram', 'webchat')),
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'transferred', 'closed')),
-    assigned_to UUID,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id TEXT PRIMARY KEY,
+    business_id TEXT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+    customer_phone TEXT NOT NULL,
+    customer_name TEXT,
+    channel TEXT NOT NULL CHECK (channel IN ('whatsapp', 'telegram', 'webchat')),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'resolved', 'transferred', 'closed')),
+    assigned_to TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
     UNIQUE(business_id, customer_phone, channel)
   );
   `,
@@ -37,108 +37,111 @@ const migrations = [
   // Tabla de mensajes
   `
   CREATE TABLE IF NOT EXISTS messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    sender_type VARCHAR(20) NOT NULL CHECK (sender_type IN ('customer', 'bot', 'agent')),
-    sender_id UUID,
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_type TEXT NOT NULL CHECK (sender_type IN ('customer', 'bot', 'agent')),
+    sender_id TEXT,
     content TEXT NOT NULL,
-    message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'audio', 'document')),
-    metadata JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    message_type TEXT DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'audio', 'document')),
+    metadata TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
   );
   `,
 
   // Tabla de sesiones de WhatsApp
   `
   CREATE TABLE IF NOT EXISTS whatsapp_sessions (
-    business_id UUID PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
-    phone_number VARCHAR(50),
+    business_id TEXT PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
+    phone_number TEXT,
     qr_code TEXT,
-    status VARCHAR(20) DEFAULT 'disconnected' CHECK (status IN ('disconnected', 'connecting', 'connected')),
-    last_seen TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    status TEXT DEFAULT 'disconnected' CHECK (status IN ('disconnected', 'connecting', 'connected')),
+    last_seen TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
   );
   `,
 
   // Tabla de bots de Telegram
   `
   CREATE TABLE IF NOT EXISTS telegram_bots (
-    business_id UUID PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
-    bot_token VARCHAR(255) NOT NULL,
-    bot_username VARCHAR(255) NOT NULL,
-    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    business_id TEXT PRIMARY KEY REFERENCES businesses(id) ON DELETE CASCADE,
+    bot_token TEXT NOT NULL,
+    bot_username TEXT NOT NULL,
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    created_at TEXT DEFAULT (datetime('now'))
   );
   `,
 
   // Índices para optimizar queries
   `
   CREATE INDEX IF NOT EXISTS idx_conversations_business ON conversations(business_id);
+  `,
+  `
   CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
+  `,
+  `
   CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+  `,
+  `
   CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at DESC);
   `,
 
-  // Trigger para actualizar updated_at automáticamente
+  // Triggers para actualizar updated_at automáticamente (SQLite syntax)
   `
-  CREATE OR REPLACE FUNCTION update_updated_at_column()
-  RETURNS TRIGGER AS $$
+  CREATE TRIGGER IF NOT EXISTS update_businesses_updated_at
+  AFTER UPDATE ON businesses
+  FOR EACH ROW
   BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
+    UPDATE businesses SET updated_at = datetime('now') WHERE id = NEW.id;
   END;
-  $$ language 'plpgsql';
   `,
 
   `
-  DROP TRIGGER IF EXISTS update_businesses_updated_at ON businesses;
-  CREATE TRIGGER update_businesses_updated_at
-    BEFORE UPDATE ON businesses
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+  CREATE TRIGGER IF NOT EXISTS update_conversations_updated_at
+  AFTER UPDATE ON conversations
+  FOR EACH ROW
+  BEGIN
+    UPDATE conversations SET updated_at = datetime('now') WHERE id = NEW.id;
+  END;
   `,
 
   `
-  DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
-  CREATE TRIGGER update_conversations_updated_at
-    BEFORE UPDATE ON conversations
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
+  CREATE TRIGGER IF NOT EXISTS update_whatsapp_sessions_updated_at
+  AFTER UPDATE ON whatsapp_sessions
+  FOR EACH ROW
+  BEGIN
+    UPDATE whatsapp_sessions SET updated_at = datetime('now') WHERE business_id = NEW.business_id;
+  END;
   `,
 ];
 
-async function runMigrations() {
-  const client = await pool.connect();
-
+function runMigrations() {
   try {
-    console.log('🔄 Iniciando migraciones...\n');
+    console.log('🔄 Iniciando migraciones SQLite...\n');
 
-    await client.query('BEGIN');
+    // SQLite no necesita transacciones explícitas para DDL
+    // pero las usamos por consistencia
+    db.exec('BEGIN TRANSACTION');
 
     for (let i = 0; i < migrations.length; i++) {
       console.log(`⚙️  Ejecutando migración ${i + 1}/${migrations.length}...`);
-      await client.query(migrations[i]);
+      db.exec(migrations[i]);
     }
 
-    await client.query('COMMIT');
+    db.exec('COMMIT');
 
-    console.log('\n✅ Migraciones completadas exitosamente');
+    console.log('\n✅ Migraciones SQLite completadas exitosamente');
   } catch (error) {
-    await client.query('ROLLBACK');
+    db.exec('ROLLBACK');
     console.error('❌ Error en migraciones:', error);
     throw error;
-  } finally {
-    client.release();
-    await pool.end();
   }
 }
 
 // Ejecutar si es llamado directamente
 if (require.main === module) {
-  runMigrations()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
+  runMigrations();
+  process.exit(0);
 }
 
 export default runMigrations;

@@ -49,6 +49,12 @@ coverage/
 *.sql.backup
 pgdata/
 
+# SQLite
+backend/data/
+*.db
+*.db-shm
+*.db-wal
+
 # WhatsApp sessions
 backend/whatsapp-sessions/
 backend/auth_info/

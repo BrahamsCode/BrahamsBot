@@ -1,35 +1,42 @@
-import { Pool } from 'pg';
+import Database from 'better-sqlite3';
 import env from './env';
+import path from 'path';
 
-// Pool de conexiones a PostgreSQL
-export const pool = new Pool({
-  host: env.DB_HOST,
-  port: env.DB_PORT,
-  user: env.DB_USER,
-  // Sin password para desarrollo local con trust auth
-  database: env.DB_NAME,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+// Crear/conectar a la base de datos SQLite
+const dbPath = path.resolve(process.cwd(), env.DB_PATH);
+export const db = new Database(dbPath, {
+  verbose: env.NODE_ENV === 'development' ? console.log : undefined,
 });
 
-// Test de conexión
-pool.on('connect', () => {
-  console.log('✓ Conectado a PostgreSQL');
-});
+// Configurar para mejor rendimiento
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
-pool.on('error', (err) => {
-  console.error('Error inesperado en PostgreSQL:', err);
-  process.exit(-1);
-});
+console.log(`✓ Conectado a SQLite: ${dbPath}`);
 
-// Función helper para ejecutar queries
-export const query = async (text: string, params?: any[]) => {
+// Función helper para queries SELECT (compatibilidad con PostgreSQL)
+export const query = (text: string, params?: any[]) => {
   const start = Date.now();
-  const res = await pool.query(text, params);
+  const stmt = db.prepare(text);
+  const rows = params ? stmt.all(...params) : stmt.all();
   const duration = Date.now() - start;
-  console.log('Query ejecutado:', { text, duration, rows: res.rowCount });
-  return res;
+  console.log('Query ejecutado:', { text, duration, rows: rows.length });
+  return { rows, rowCount: rows.length };
 };
 
-export default pool;
+// Función helper para queries INSERT/UPDATE/DELETE
+export const run = (text: string, params?: any[]) => {
+  const start = Date.now();
+  const stmt = db.prepare(text);
+  const result = params ? stmt.run(...params) : stmt.run();
+  const duration = Date.now() - start;
+  console.log('Query ejecutado:', { text, duration, changes: result.changes });
+  return result;
+};
+
+// Cerrar conexión al terminar
+process.on('beforeExit', () => {
+  db.close();
+});
+
+export default db;

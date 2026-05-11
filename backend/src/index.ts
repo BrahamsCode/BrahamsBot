@@ -3,8 +3,11 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import env from './config/env';
-import pool from './config/database';
-import whatsappService from './services/whatsapp/whatsapp.service';
+import db from './config/database';
+// import whatsappService from './services/whatsapp/whatsapp.service'; // Comentado temporalmente
+import telegramService from './services/telegram/telegram.service';
+import metricsRoutes from './routes/metrics.routes';
+import conversationsRoutes from './routes/conversations.routes';
 
 // Crear aplicación Express
 const app = express();
@@ -37,9 +40,10 @@ app.use((req, res, next) => {
 });
 
 // ============================================
-// RUTAS DE HEALTH CHECK
+// RUTAS
 // ============================================
 
+// Health Check
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
@@ -49,14 +53,20 @@ app.get('/', (req, res) => {
   });
 });
 
-app.get('/health', async (req, res) => {
+// Rutas de métricas
+app.use('/api/metrics', metricsRoutes);
+
+// Rutas de conversaciones
+app.use('/api/conversations', conversationsRoutes);
+
+app.get('/health', (req, res) => {
   try {
     // Verificar conexión a base de datos
-    await pool.query('SELECT 1');
+    db.prepare('SELECT 1').get();
 
     res.json({
       status: 'healthy',
-      database: 'connected',
+      database: 'connected (SQLite)',
       whatsapp: env.WHATSAPP_ENABLED ? 'enabled' : 'disabled',
       telegram: env.TELEGRAM_ENABLED ? 'enabled' : 'disabled',
       timestamp: new Date().toISOString(),
@@ -70,40 +80,73 @@ app.get('/health', async (req, res) => {
 });
 
 // ============================================
-// RUTAS DE WHATSAPP
+// RUTAS DE WHATSAPP (COMENTADAS TEMPORALMENTE)
 // ============================================
 
-// Iniciar sesión de WhatsApp para un negocio
+/* WhatsApp temporalmente deshabilitado - usar Telegram
 app.post('/api/whatsapp/init/:businessId', async (req, res) => {
   try {
     const { businessId } = req.params;
+    const { phoneNumber } = req.body;
 
-    // TODO: Obtener datos del negocio de la BD
-    const business = {
-      id: businessId,
-      name: 'Negocio Demo',
-      description: 'Un negocio de ejemplo',
-      industry: 'retail',
-      knowledge_base: 'Vendemos productos de tecnología.',
-      ai_personality: 'amigable y profesional',
-      created_at: new Date(),
-      updated_at: new Date(),
-    };
+    // Obtener datos del negocio de la BD
+    const businessQuery = db.prepare('SELECT * FROM businesses WHERE id = ?');
+    const business = businessQuery.get(businessId) as any;
 
-    const qrCode = await whatsappService.initSession(businessId, business);
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        error: 'Negocio no encontrado',
+      });
+    }
 
-    res.json({
-      success: true,
-      qrCode,
-      message: qrCode
-        ? 'Escanea el código QR con WhatsApp'
-        : 'Sesión iniciada exitosamente',
-    });
+    // Si se proporciona número, usar pairing code
+    if (phoneNumber) {
+      const pairingCode = await whatsappService.initSessionWithPairing(
+        businessId,
+        business,
+        phoneNumber
+      );
+
+      res.json({
+        success: true,
+        pairingCode,
+        message: pairingCode === 'already_connected'
+          ? 'Ya estás conectado'
+          : `Ingresa este código en WhatsApp: ${pairingCode}`,
+      });
+    } else {
+      // Método legacy con QR
+      const qrCode = await whatsappService.initSession(businessId, business);
+
+      res.json({
+        success: true,
+        qrCode,
+        message: qrCode
+          ? 'Escanea el código QR con WhatsApp'
+          : 'Sesión iniciada exitosamente',
+      });
+    }
   } catch (error) {
     console.error('Error al iniciar sesión de WhatsApp:', error);
     res.status(500).json({
       success: false,
       error: 'Error al iniciar sesión de WhatsApp',
+    });
+  }
+});
+
+// Obtener código de emparejamiento
+app.get('/api/whatsapp/pairing-code/:businessId', (req, res) => {
+  const { businessId } = req.params;
+  const pairingCode = whatsappService.getPairingCode(businessId);
+
+  if (pairingCode) {
+    res.json({ success: true, pairingCode });
+  } else {
+    res.status(404).json({
+      success: false,
+      message: 'No hay código de emparejamiento disponible',
     });
   }
 });
@@ -151,22 +194,100 @@ app.delete('/api/whatsapp/session/:businessId', async (req, res) => {
     });
   }
 });
+*/
+
+// ============================================
+// RUTAS DE TELEGRAM
+// ============================================
+
+// Iniciar bot de Telegram
+app.post('/api/telegram/init/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        error: 'Token de Telegram requerido',
+      });
+    }
+
+    await telegramService.initBot(businessId, token);
+
+    const botInfo = await telegramService.getBotInfo(businessId);
+
+    res.json({
+      success: true,
+      message: 'Bot de Telegram iniciado',
+      bot: botInfo,
+    });
+  } catch (error) {
+    console.error('Error al iniciar bot de Telegram:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al iniciar bot de Telegram',
+    });
+  }
+});
+
+// Obtener estado del bot
+app.get('/api/telegram/status/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    const status = telegramService.getBotStatus(businessId);
+    const botInfo = await telegramService.getBotInfo(businessId);
+
+    res.json({
+      success: true,
+      status,
+      bot: botInfo,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener estado del bot',
+    });
+  }
+});
+
+// Detener bot
+app.delete('/api/telegram/bot/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    await telegramService.stopBot(businessId);
+
+    res.json({
+      success: true,
+      message: 'Bot detenido',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Error al detener bot',
+    });
+  }
+});
 
 // ============================================
 // WEBSOCKET EVENTS
 // ============================================
 
+// Configurar Socket.IO en el servicio de Telegram
+telegramService.setSocketIO(io);
+
 io.on('connection', (socket) => {
-  console.log(`✓ Cliente conectado: ${socket.id}`);
+  console.log(`✓ Cliente conectado al WebSocket: ${socket.id}`);
+
+  // El cliente se une a una sala por businessId
+  socket.on('join_business', (businessId) => {
+    socket.join(`business_${businessId}`);
+    console.log(`Cliente ${socket.id} se unió a business_${businessId}`);
+  });
 
   socket.on('disconnect', () => {
     console.log(`✗ Cliente desconectado: ${socket.id}`);
   });
-
-  // TODO: Implementar eventos de tiempo real
-  // - new_message: Nuevo mensaje recibido
-  // - conversation_update: Actualización de conversación
-  // - whatsapp_status: Cambio de estado de WhatsApp
 });
 
 // ============================================
@@ -186,11 +307,11 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // INICIAR SERVIDOR
 // ============================================
 
-const startServer = async () => {
+const startServer = () => {
   try {
     // Verificar conexión a base de datos
-    await pool.query('SELECT 1');
-    console.log('✓ Base de datos conectada');
+    db.prepare('SELECT 1').get();
+    console.log('✓ Base de datos SQLite conectada');
 
     // Iniciar servidor
     httpServer.listen(env.PORT, () => {
@@ -201,6 +322,7 @@ const startServer = async () => {
 ║                                        ║
 ║   Servidor: http://localhost:${env.PORT}   ║
 ║   Entorno: ${env.NODE_ENV.padEnd(26)}║
+║   DB: SQLite                           ║
 ║   WhatsApp: ${env.WHATSAPP_ENABLED ? 'Habilitado'.padEnd(22) : 'Deshabilitado'.padEnd(22)}║
 ║   Telegram: ${env.TELEGRAM_ENABLED ? 'Habilitado'.padEnd(22) : 'Deshabilitado'.padEnd(22)}║
 ║                                        ║
@@ -214,15 +336,15 @@ const startServer = async () => {
 };
 
 // Manejar señales de cierre
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   console.log('SIGTERM recibido, cerrando servidor...');
-  await pool.end();
+  db.close();
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   console.log('SIGINT recibido, cerrando servidor...');
-  await pool.end();
+  db.close();
   process.exit(0);
 });
 

@@ -12,8 +12,8 @@ export default function WhatsAppSetup() {
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [error, setError] = useState<string | null>(null);
 
-  // ID de negocio de ejemplo (TODO: obtener del usuario autenticado)
-  const businessId = 'demo-business';
+  // ID de negocio de BrahamsCompany
+  const businessId = '78a50948-e45b-47cc-914b-d11800138c72';
 
   // Verificar estado al montar
   useEffect(() => {

@@ -1,16 +1,19 @@
-import pool from '../config/database';
+import db from '../config/database';
+import { randomUUID } from 'crypto';
 
-async function seedDatabase() {
-  const client = await pool.connect();
-
+function seedDatabase() {
   try {
-    console.log('🌱 Iniciando seed de datos...\n');
+    console.log('🌱 Iniciando seed de datos SQLite...\n');
 
-    await client.query('BEGIN');
+    db.exec('BEGIN TRANSACTION');
+
+    // Generar ID para el negocio
+    const businessId = randomUUID();
 
     // Insertar negocio de ejemplo
-    const businessResult = await client.query(`
-      INSERT INTO businesses (
+    const insertBusiness = db.prepare(`
+      INSERT OR IGNORE INTO businesses (
+        id,
         name,
         description,
         industry,
@@ -18,68 +21,77 @@ async function seedDatabase() {
         email,
         knowledge_base,
         ai_personality
-      ) VALUES (
-        'Cafetería El Buen Café',
-        'Cafetería especializada en café de especialidad y postres artesanales',
-        'restaurante',
-        '+51 987 654 321',
-        'contacto@elbuencafe.pe',
-        'Somos una cafetería ubicada en Lima, Perú. Ofrecemos:
-        - Café de especialidad (latte, cappuccino, americano, espresso)
-        - Postres artesanales (cheesecake, torta de chocolate, pie de limón)
-        - Desayunos (tostadas, croissants, yogurt con granola)
-        - Horario: Lunes a Viernes 7am-8pm, Sábados 8am-9pm, Domingos 9am-6pm
-        - Delivery disponible dentro de 5km
-        - Precios: Café desde S/ 8, Postres desde S/ 12
-        - Aceptamos pagos en efectivo y tarjeta',
-        'amigable, cálido y acogedor'
-      )
-      ON CONFLICT DO NOTHING
-      RETURNING id;
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const businessId = businessResult.rows[0]?.id;
+    const businessResult = insertBusiness.run(
+      businessId,
+      'Cafetería El Buen Café',
+      'Cafetería especializada en café de especialidad y postres artesanales',
+      'restaurante',
+      '+51 987 654 321',
+      'contacto@elbuencafe.pe',
+      `Somos una cafetería ubicada en Lima, Perú. Ofrecemos:
+      - Café de especialidad (latte, cappuccino, americano, espresso)
+      - Postres artesanales (cheesecake, torta de chocolate, pie de limón)
+      - Desayunos (tostadas, croissants, yogurt con granola)
+      - Horario: Lunes a Viernes 7am-8pm, Sábados 8am-9pm, Domingos 9am-6pm
+      - Delivery disponible dentro de 5km
+      - Precios: Café desde S/ 8, Postres desde S/ 12
+      - Aceptamos pagos en efectivo y tarjeta`,
+      'amigable, cálido y acogedor'
+    );
 
-    if (businessId) {
+    if (businessResult.changes > 0) {
       console.log(`✓ Negocio de ejemplo creado con ID: ${businessId}`);
 
+      // Generar ID para la conversación
+      const conversationId = randomUUID();
+
       // Insertar conversación de ejemplo
-      const conversationResult = await client.query(`
-        INSERT INTO conversations (
+      const insertConversation = db.prepare(`
+        INSERT OR IGNORE INTO conversations (
+          id,
           business_id,
           customer_phone,
           customer_name,
           channel,
           status
-        ) VALUES (
-          $1,
-          '+51999888777',
-          'Juan Pérez',
-          'whatsapp',
-          'active'
-        )
-        ON CONFLICT DO NOTHING
-        RETURNING id;
-      `, [businessId]);
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `);
 
-      const conversationId = conversationResult.rows[0]?.id;
+      const conversationResult = insertConversation.run(
+        conversationId,
+        businessId,
+        '+51999888777',
+        'Juan Pérez',
+        'whatsapp',
+        'active'
+      );
 
-      if (conversationId) {
+      if (conversationResult.changes > 0) {
         // Insertar mensajes de ejemplo
-        await client.query(`
-          INSERT INTO messages (conversation_id, sender_type, content, message_type)
-          VALUES
-            ($1, 'customer', 'Hola, tienen delivery?', 'text'),
-            ($1, 'bot', 'Hola Juan! 😊 Sí, tenemos servicio de delivery dentro de 5km. ¿En qué zona te encuentras?', 'text'),
-            ($1, 'customer', 'Estoy en Miraflores', 'text'),
-            ($1, 'bot', '¡Perfecto! Miraflores está dentro de nuestra zona de delivery. ¿Qué te gustaría ordenar? Tenemos cafés desde S/ 8 y postres desde S/ 12.', 'text');
-        `, [conversationId]);
+        const insertMessage = db.prepare(`
+          INSERT INTO messages (id, conversation_id, sender_type, content, message_type)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+
+        const messages = [
+          ['Hola, tienen delivery?', 'customer'],
+          ['Hola Juan! 😊 Sí, tenemos servicio de delivery dentro de 5km. ¿En qué zona te encuentras?', 'bot'],
+          ['Estoy en Miraflores', 'customer'],
+          ['¡Perfecto! Miraflores está dentro de nuestra zona de delivery. ¿Qué te gustaría ordenar? Tenemos cafés desde S/ 8 y postres desde S/ 12.', 'bot'],
+        ];
+
+        messages.forEach(([content, senderType]) => {
+          insertMessage.run(randomUUID(), conversationId, senderType, content, 'text');
+        });
 
         console.log(`✓ Conversación y mensajes de ejemplo creados`);
       }
     }
 
-    await client.query('COMMIT');
+    db.exec('COMMIT');
 
     console.log('\n✅ Seed completado exitosamente');
     console.log('\n📊 Datos de prueba:');
@@ -87,20 +99,16 @@ async function seedDatabase() {
     console.log('   - Canal: WhatsApp');
     console.log('   - Conversación demo con mensajes');
   } catch (error) {
-    await client.query('ROLLBACK');
+    db.exec('ROLLBACK');
     console.error('❌ Error en seed:', error);
     throw error;
-  } finally {
-    client.release();
-    await pool.end();
   }
 }
 
 // Ejecutar si es llamado directamente
 if (require.main === module) {
-  seedDatabase()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
+  seedDatabase();
+  process.exit(0);
 }
 
 export default seedDatabase;

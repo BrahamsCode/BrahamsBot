@@ -2,8 +2,9 @@
 
 **Proyecto**: Sistema Multi-Canal de Atención al Cliente con IA  
 **Fecha Inicio**: 10 Mayo 2026  
-**Estado**: ✅ MVP Funcional  
-**Stack**: Node.js 24, React 19, PostgreSQL 15, Baileys, Groq  
+**Última Actualización**: 11 Mayo 2026  
+**Estado**: ✅ MVP Funcional + Backend Conectado  
+**Stack**: Node.js 24, React 19, SQLite 3, Baileys, Groq  
 
 ---
 
@@ -149,14 +150,79 @@ telegram_bots       → Bots de Telegram (futuro)
 
 ---
 
+## ✅ Fase 7: Migración a SQLite (COMPLETADO)
+
+**Fecha**: 11 Mayo 2026
+
+### Implementado:
+- [x] Configuración de SQLite con better-sqlite3
+- [x] Migración completa del schema de PostgreSQL a SQLite
+- [x] Adaptación de triggers y constraints
+- [x] Seed de datos funcionando
+- [x] Eliminación de dependencia de Docker
+- [x] Base de datos en archivo local `./data/brahamsbot.db`
+
+### Cambios Técnicos:
+- UUID → TEXT (generación con crypto.randomUUID)
+- JSONB → TEXT (JSON serializado)
+- TIMESTAMP → TEXT (ISO format con datetime())
+- Triggers adaptados a sintaxis SQLite
+- Pool de conexiones → Conexión directa con WAL mode
+
+---
+
+## ✅ Fase 8: API de Métricas (COMPLETADO)
+
+**Fecha**: 11 Mayo 2026
+
+### Implementado:
+- [x] Servicio de métricas (metrics.service.ts)
+- [x] Endpoints REST para dashboard
+- [x] Cálculo de estadísticas en tiempo real
+- [x] Datos de conversaciones por hora
+- [x] Métricas de tiempo de respuesta
+- [x] Conversaciones recientes
+
+### Endpoints Creados:
+```
+GET /api/metrics/stats                  → Estadísticas generales
+GET /api/metrics/conversations-by-hour  → Gráfico de conversaciones
+GET /api/metrics/response-time          → Gráfico de tiempos
+GET /api/metrics/recent-conversations   → Últimas conversaciones
+```
+
+---
+
+## ✅ Fase 9: Integración Frontend-Backend (COMPLETADO)
+
+**Fecha**: 11 Mayo 2026
+
+### Implementado:
+- [x] Servicio API centralizado (api.service.ts)
+- [x] React Query para cache y sincronización
+- [x] Dashboard con datos reales del backend
+- [x] Auto-refresh cada 30 segundos
+- [x] Loading states
+- [x] Manejo de errores
+
+### Características:
+- Datos en tiempo real desde SQLite
+- Cache inteligente con React Query
+- Actualización automática de métricas
+- Sin datos hardcodeados
+
+---
+
 ## 📊 Estado Actual del Proyecto
 
 ### Funcionalidades Operativas:
 ✅ Backend API funcionando en http://localhost:3000  
 ✅ Frontend Dashboard en http://localhost:5173  
-✅ Base de datos PostgreSQL en Docker  
-✅ Conexión de WhatsApp con QR  
-✅ Respuestas automáticas con IA  
+✅ Base de datos SQLite (sin Docker necesario)  
+✅ Endpoints de métricas funcionando  
+✅ Dashboard con datos reales  
+✅ Conexión de WhatsApp con QR (pendiente probar)  
+✅ Respuestas automáticas con IA (pendiente probar)  
 ✅ Detección de transferencia a humano  
 
 ### Próximas Funcionalidades (TODO):
@@ -224,12 +290,13 @@ Ninguno por el momento. El MVP está funcionando correctamente.
 
 ## 📈 Métricas del Proyecto
 
-- **Commits**: 2
-- **Líneas de código**: ~2,700
-- **Archivos**: 43
-- **Dependencias**: 25 (backend) + 10 (frontend)
-- **Tiempo desarrollo**: ~2 horas
-- **Estado**: Funcionando en desarrollo
+- **Commits**: 5+
+- **Líneas de código**: ~3,500
+- **Archivos**: 48
+- **Dependencias**: 24 (backend, -1 pg) + 10 (frontend)
+- **Tiempo desarrollo**: ~4 horas
+- **Estado**: Funcionando en desarrollo con backend conectado
+- **Base de datos**: SQLite (305 KB con datos de ejemplo)
 
 ---
 

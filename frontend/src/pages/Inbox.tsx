@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Send, User, Bot, Clock, CheckCircle } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tantml:react-query';
+import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Send, User, Bot, Clock, CheckCircle, ArrowLeft, Home } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { io } from 'socket.io-client';
@@ -28,6 +29,7 @@ interface Message {
 }
 
 export default function Inbox() {
+  const navigate = useNavigate();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const queryClient = useQueryClient();
@@ -117,10 +119,29 @@ export default function Inbox() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-blue-600" />
-            Inbox - Conversaciones en Vivo
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-blue-600" />
+              Inbox - Conversaciones en Vivo
+            </h1>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => navigate('/dashboard')}
+                variant="outline"
+                className="border-gray-300 hover:border-blue-500 hover:bg-blue-50"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver
+              </Button>
+              <Button
+                onClick={() => navigate('/dashboard')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 

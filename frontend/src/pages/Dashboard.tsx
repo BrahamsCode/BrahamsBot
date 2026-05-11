@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Bot, Users, TrendingUp, Sparkles, Zap, Activity } from 'lucide-react';
+import { MessageSquare, Bot, Users, TrendingUp, Sparkles, Zap, Activity, Send } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
@@ -126,7 +126,14 @@ export default function Dashboard() {
                 className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg"
               >
                 <Zap className="w-4 h-4 mr-2" />
-                Conectar WhatsApp
+                WhatsApp
+              </Button>
+              <Button
+                onClick={() => navigate('/telegram-setup')}
+                className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Telegram
               </Button>
             </motion.div>
           </div>
@@ -282,7 +289,7 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Button
                   variant="outline"
                   className="h-auto py-6 flex-col border-2 hover:border-green-500 hover:shadow-lg hover:scale-105 transition-all"
@@ -290,6 +297,14 @@ export default function Dashboard() {
                 >
                   <MessageSquare className="w-8 h-8 mb-2 text-green-600" />
                   <span className="font-semibold">Configurar WhatsApp</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto py-6 flex-col border-2 hover:border-blue-500 hover:shadow-lg hover:scale-105 transition-all"
+                  onClick={() => navigate('/telegram-setup')}
+                >
+                  <Send className="w-8 h-8 mb-2 text-blue-600" />
+                  <span className="font-semibold">Configurar Telegram</span>
                 </Button>
                 <Button variant="outline" className="h-auto py-6 flex-col border-2 hover:border-purple-500 hover:shadow-lg hover:scale-105 transition-all">
                   <Bot className="w-8 h-8 mb-2 text-purple-600" />

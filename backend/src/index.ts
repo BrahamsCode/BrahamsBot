@@ -304,17 +304,47 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 // ============================================
+// AUTO-INICIALIZACIÓN DE SERVICIOS
+// ============================================
+
+const autoInitServices = async () => {
+  try {
+    // Auto-inicializar bot de Telegram si está configurado
+    if (env.TELEGRAM_ENABLED && env.TELEGRAM_BOT_TOKEN) {
+      console.log('🤖 Auto-inicializando bot de Telegram...');
+
+      // Obtener el primer negocio de la base de datos
+      const businessQuery = db.prepare('SELECT id, name FROM businesses LIMIT 1');
+      const business = businessQuery.get() as { id: string; name: string } | undefined;
+
+      if (business) {
+        try {
+          await telegramService.initBot(business.id, env.TELEGRAM_BOT_TOKEN);
+          console.log(`✓ Bot de Telegram iniciado automáticamente para: ${business.name}`);
+        } catch (error) {
+          console.error('❌ Error al iniciar bot de Telegram:', error);
+        }
+      } else {
+        console.warn('⚠️  No hay negocios en la base de datos. Ejecuta "npm run db:seed" primero.');
+      }
+    }
+  } catch (error) {
+    console.error('Error en auto-inicialización de servicios:', error);
+  }
+};
+
+// ============================================
 // INICIAR SERVIDOR
 // ============================================
 
-const startServer = () => {
+const startServer = async () => {
   try {
     // Verificar conexión a base de datos
     db.prepare('SELECT 1').get();
     console.log('✓ Base de datos SQLite conectada');
 
     // Iniciar servidor
-    httpServer.listen(env.PORT, () => {
+    httpServer.listen(env.PORT, async () => {
       console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
@@ -328,6 +358,9 @@ const startServer = () => {
 ║                                        ║
 ╚════════════════════════════════════════╝
       `);
+
+      // Auto-inicializar servicios después de que el servidor esté arriba
+      await autoInitServices();
     });
   } catch (error) {
     console.error('❌ Error al iniciar el servidor:', error);

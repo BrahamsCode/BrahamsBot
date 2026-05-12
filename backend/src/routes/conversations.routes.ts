@@ -1,8 +1,42 @@
 import { Router } from 'express';
 import conversationService from '../services/conversation.service';
 import telegramService from '../services/telegram/telegram.service';
+import db from '../config/database';
 
 const router = Router();
+
+// GET /api/conversations/admin/all - Obtener TODAS las conversaciones (Super Admin)
+router.get('/admin/all', (req, res) => {
+  try {
+    // Verificar si el usuario es super_admin
+    const user = (req as any).user;
+    if (user?.role !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'No autorizado. Solo Super Admin puede ver todas las conversaciones.',
+      });
+    }
+
+    // Obtener TODAS las conversaciones de todos los negocios
+    const conversations = db.prepare(`
+      SELECT c.*, b.name as business_name
+      FROM conversations c
+      LEFT JOIN businesses b ON c.business_id = b.id
+      ORDER BY c.updated_at DESC
+    `).all();
+
+    res.json({
+      success: true,
+      data: conversations,
+    });
+  } catch (error) {
+    console.error('Error obteniendo todas las conversaciones:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error al obtener conversaciones',
+    });
+  }
+});
 
 // GET /api/conversations/:businessId - Obtener todas las conversaciones
 router.get('/:businessId', (req, res) => {

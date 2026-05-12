@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Smartphone, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Smartphone, CheckCircle2, Loader2, AlertCircle, LogOut, Home } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import BusinessSelector from '../components/BusinessSelector';
 import { whatsappApi } from '../services/api';
 
 export default function WhatsAppSetup() {
   const navigate = useNavigate();
+  const { logout, currentBusiness } = useAuth();
   const [loading, setLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [error, setError] = useState<string | null>(null);
 
-  // ID de negocio de BrahamsCompany
-  const businessId = '78a50948-e45b-47cc-914b-d11800138c72';
+  const businessId = currentBusiness?.id;
 
   // Verificar estado al montar
   useEffect(() => {
@@ -95,19 +97,43 @@ export default function WhatsAppSetup() {
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/dashboard')}
-            className="mb-2"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al Dashboard
-          </Button>
-          <h1 className="text-2xl font-bold text-gray-900">Configuración de WhatsApp</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Conecta tu cuenta de WhatsApp para empezar a recibir mensajes
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Configuración de WhatsApp</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Conecta tu cuenta de WhatsApp para empezar a recibir mensajes
+              </p>
+            </div>
+            <div className="flex gap-3 items-center">
+              <BusinessSelector />
+              <Button
+                onClick={() => navigate('/dashboard')}
+                variant="outline"
+                className="border-gray-300 hover:border-blue-500"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Volver
+              </Button>
+              <Button
+                onClick={() => navigate('/dashboard')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Home className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
+              <Button
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Salir
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 

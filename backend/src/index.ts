@@ -6,8 +6,10 @@ import env from './config/env';
 import db from './config/database';
 // import whatsappService from './services/whatsapp/whatsapp.service'; // Comentado temporalmente
 import telegramService from './services/telegram/telegram.service';
+import authRoutes from './routes/auth.routes';
 import metricsRoutes from './routes/metrics.routes';
 import conversationsRoutes from './routes/conversations.routes';
+import { authMiddleware, businessAccessMiddleware } from './middleware/auth.middleware';
 
 // Crear aplicación Express
 const app = express();
@@ -43,7 +45,7 @@ app.use((req, res, next) => {
 // RUTAS
 // ============================================
 
-// Health Check
+// Health Check (público)
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
@@ -53,11 +55,14 @@ app.get('/', (req, res) => {
   });
 });
 
-// Rutas de métricas
-app.use('/api/metrics', metricsRoutes);
+// Rutas de autenticación (públicas)
+app.use('/api/auth', authRoutes);
 
-// Rutas de conversaciones
-app.use('/api/conversations', conversationsRoutes);
+// Rutas de métricas (protegidas)
+app.use('/api/metrics', authMiddleware, metricsRoutes);
+
+// Rutas de conversaciones (protegidas)
+app.use('/api/conversations', authMiddleware, conversationsRoutes);
 
 app.get('/health', (req, res) => {
   try {

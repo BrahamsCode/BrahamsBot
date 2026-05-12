@@ -1,14 +1,17 @@
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Bot, Users, TrendingUp, Sparkles, Zap, Activity, Send } from 'lucide-react';
+import { MessageSquare, Bot, Users, TrendingUp, Sparkles, Zap, Activity, Send, LogOut, Shield } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import BusinessSelector from '../components/BusinessSelector';
 import apiService from '../services/api.service';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   // Obtener datos del backend
   const { data: statsData, isLoading: statsLoading } = useQuery({
@@ -17,13 +20,13 @@ export default function Dashboard() {
     refetchInterval: 30000, // Actualizar cada 30 segundos
   });
 
-  const { data: conversationsData = [], isLoading: conversationsLoading } = useQuery({
+  const { data: conversationsData = [] } = useQuery({
     queryKey: ['conversations-by-hour'],
     queryFn: () => apiService.getConversationsByHour(),
     refetchInterval: 60000, // Actualizar cada minuto
   });
 
-  const { data: responseTimeData = [], isLoading: responseTimeLoading } = useQuery({
+  const { data: responseTimeData = [] } = useQuery({
     queryKey: ['response-time'],
     queryFn: () => apiService.getResponseTime(),
     refetchInterval: 300000, // Actualizar cada 5 minutos
@@ -105,15 +108,25 @@ export default function Dashboard() {
                 </h1>
                 <p className="text-sm text-gray-600 flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
-                  Atención Automatizada con IA
+                  Hola, {user?.name || 'Usuario'}
                 </p>
               </div>
             </motion.div>
             <motion.div
               initial={{ x: 20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              className="flex gap-3"
+              className="flex gap-3 items-center"
             >
+              <BusinessSelector />
+              {user?.role === 'super_admin' && (
+                <Button
+                  onClick={() => navigate('/super-admin')}
+                  className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Super Admin
+                </Button>
+              )}
               <Button
                 onClick={() => navigate('/inbox')}
                 className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg"
@@ -134,6 +147,17 @@ export default function Dashboard() {
               >
                 <Send className="w-4 h-4 mr-2" />
                 Telegram
+              </Button>
+              <Button
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Salir
               </Button>
             </motion.div>
           </div>

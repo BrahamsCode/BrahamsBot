@@ -1,7 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }; Start-Sleep -Seconds 2; Write-Host \"Puerto 3000 liberado\")"
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }; Start-Sleep -Seconds 2; Write-Host \"Puerto 3000 liberado\")",
+      "PowerShell($procs = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | Where-Object { $_ -ne 0 -and $_ -ne 4 }; if \\($procs\\) { $procs | ForEach-Object { Write-Host \"Matando proceso $_\"; Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }; Start-Sleep -Seconds 2; Write-Host \"Puerto 3000 liberado\")",
+      "PowerShell(Write-Host \"Matando todos los procesos Node en puerto 3000...\"; Get-Process node -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne $PID } | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3; Write-Host \"Procesos Node limpiados\")",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(npm run dev)",
+      "PowerShell(Get-Process -Name node -ErrorAction SilentlyContinue)",
+      "PowerShell(Stop-Process -Force)",
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'C:\\\\Users\\\\User\\\\Documents\\\\Proyectos Personales\\\\BrahamsBot\\\\backend'; npm run dev\")",
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'C:\\\\Users\\\\User\\\\Documents\\\\Proyectos Personales\\\\BrahamsBot\\\\frontend'; npm run dev\")",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000\" -UseBasicParsing)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:5173\" -UseBasicParsing)",
+      "PowerShell(Get-NetTCPConnection -State Listen | Where-Object {$_.LocalPort -in @\\(5173, 5174, 5175, 3000\\)} | Select-Object LocalPort, State | Sort-Object LocalPort)",
+      "PowerShell(Start-Process \"http://localhost:5173\")",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3000/api/conversations/5d2fa964-2d7b-4249-ab41-b8091f913f41\" -UseBasicParsing)",
+      "PowerShell(Start-Process \"http://localhost:5173/super-admin\")",
+      "WebFetch(domain:localhost)",
+      "PowerShell($token = \\(Invoke-WebRequest -Uri \"http://localhost:3000/api/auth/login\" -Method POST -Headers @{\"Content-Type\"=\"application/json\"} -Body '{\"email\":\"admin@brahamsbot.com\",\"password\":\"brahams2026\"}' -UseBasicParsing | ConvertFrom-Json\\).data.token; Invoke-WebRequest -Uri \"http://localhost:3000/api/conversations/admin/all\" -Headers @{\"Authorization\"=\"Bearer $token\"} -UseBasicParsing | Select-Object -ExpandProperty Content | ConvertFrom-Json | ConvertTo-Json -Depth 5)",
+      "PowerShell($loginResponse = Invoke-WebRequest -Uri \"http://localhost:3000/api/auth/login\" -Method POST -Headers @{\"Content-Type\"=\"application/json\"} -Body '{\"email\":\"admin@brahamsbot.com\",\"password\":\"brahams2026\"}' -UseBasicParsing | ConvertFrom-Json; $token = $loginResponse.data.token; Write-Host \"Token obtenido. Role:\" $loginResponse.data.user.role; $conversations = Invoke-WebRequest -Uri \"http://localhost:3000/api/conversations/admin/all\" -Headers @{\"Authorization\"=\"Bearer $token\"} -UseBasicParsing | ConvertFrom-Json; Write-Host \"`nConversaciones encontradas:\" $conversations.data.Count; $conversations.data | Select-Object -First 3 | Format-Table customer_name, channel, business_name, status -AutoSize)",
+      "PowerShell(Start-Process powershell -ArgumentList \"-NoExit\", \"-Command\", \"cd 'C:\\\\Users\\\\User\\\\Documents\\\\Proyectos Personales\\\\BrahamsBot\\\\backend'; Write-Host 'Iniciando backend...'; npm run dev\")",
+      "PowerShell(Start-Sleep -Seconds 10; $loginResponse = Invoke-WebRequest -Uri \"http://localhost:3000/api/auth/login\" -Method POST -Headers @{\"Content-Type\"=\"application/json\"} -Body '{\"email\":\"admin@brahamsbot.com\",\"password\":\"brahams2026\"}' -UseBasicParsing | ConvertFrom-Json; Write-Host \"✓ Login exitoso\"; Write-Host \"Email:\" $loginResponse.data.user.email; Write-Host \"Role:\" $loginResponse.data.user.role; $token = $loginResponse.data.token; try { $conversations = Invoke-WebRequest -Uri \"http://localhost:3000/api/conversations/admin/all\" -Headers @{\"Authorization\"=\"Bearer $token\"} -UseBasicParsing | ConvertFrom-Json; Write-Host \"`n✓ Endpoint /admin/all funciona!\"; Write-Host \"Total conversaciones:\" $conversations.data.Count; $conversations.data | Format-Table customer_name, channel, business_name -AutoSize } catch { Write-Host \"`n❌ Error en endpoint:\" $_.Exception.Message })"
     ]
   }
 }

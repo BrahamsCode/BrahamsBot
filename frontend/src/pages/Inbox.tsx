@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tantml:react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Send, User, Bot, Clock, CheckCircle, ArrowLeft, Home } from 'lucide-react';
+import { MessageSquare, Send, User, Bot, CheckCircle, ArrowLeft, Home, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import BusinessSelector from '../components/BusinessSelector';
 import { io } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3000';
-const BUSINESS_ID = '78a50948-e45b-47cc-914b-d11800138c72';
 
 interface Conversation {
   id: string;
@@ -30,6 +31,7 @@ interface Message {
 
 export default function Inbox() {
   const navigate = useNavigate();
+  const { logout, currentBusiness } = useAuth();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const queryClient = useQueryClient();
@@ -40,7 +42,9 @@ export default function Inbox() {
 
     socket.on('connect', () => {
       console.log('✓ Conectado a WebSocket');
-      socket.emit('join_business', BUSINESS_ID);
+      if (currentBusiness?.id) {
+        socket.emit('join_business', currentBusiness.id);
+      }
     });
 
     socket.on('new_message', (data: any) => {
@@ -59,12 +63,14 @@ export default function Inbox() {
 
   // Obtener conversaciones
   const { data: conversations = [], isLoading: loadingConversations } = useQuery({
-    queryKey: ['conversations'],
+    queryKey: ['conversations', currentBusiness?.id],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/conversations/${BUSINESS_ID}`);
+      if (!currentBusiness?.id) return [];
+      const res = await fetch(`${API_URL}/api/conversations/${currentBusiness.id}`);
       const data = await res.json();
       return data.data as Conversation[];
     },
+    enabled: !!currentBusiness?.id,
     refetchInterval: 5000,
   });
 
@@ -72,19 +78,20 @@ export default function Inbox() {
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', selectedConversation],
     queryFn: async () => {
-      if (!selectedConversation) return [];
-      const res = await fetch(`${API_URL}/api/conversations/${BUSINESS_ID}/${selectedConversation}/messages`);
+      if (!selectedConversation || !currentBusiness?.id) return [];
+      const res = await fetch(`${API_URL}/api/conversations/${currentBusiness.id}/${selectedConversation}/messages`);
       const data = await res.json();
       return data.data as Message[];
     },
-    enabled: !!selectedConversation,
+    enabled: !!selectedConversation && !!currentBusiness?.id,
   });
 
   // Enviar mensaje
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
+      if (!currentBusiness?.id) throw new Error('No business selected');
       const res = await fetch(
-        `${API_URL}/api/conversations/${BUSINESS_ID}/${selectedConversation}/messages`,
+        `${API_URL}/api/conversations/${currentBusiness.id}/${selectedConversation}/messages`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -124,7 +131,8 @@ export default function Inbox() {
               <MessageSquare className="w-6 h-6 text-blue-600" />
               Inbox - Conversaciones en Vivo
             </h1>
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
+              <BusinessSelector />
               <Button
                 onClick={() => navigate('/dashboard')}
                 variant="outline"
@@ -139,6 +147,17 @@ export default function Inbox() {
               >
                 <Home className="w-4 h-4 mr-2" />
                 Dashboard
+              </Button>
+              <Button
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Salir
               </Button>
             </div>
           </div>

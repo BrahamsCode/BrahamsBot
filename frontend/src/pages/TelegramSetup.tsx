@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQuery } from '@tantml:react-query';
-import { Send, CheckCircle, AlertCircle, ArrowLeft, Home, ExternalLink } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Send, CheckCircle, AlertCircle, ArrowLeft, Home, ExternalLink, LogOut } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import BusinessSelector from '../components/BusinessSelector';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-const BUSINESS_ID = '78a50948-e45b-47cc-914b-d11800138c72'; // Obtener del primer negocio
 
 interface BotInfo {
   id: number;
@@ -23,23 +24,27 @@ interface TelegramStatus {
 
 export default function TelegramSetup() {
   const navigate = useNavigate();
+  const { logout, currentBusiness } = useAuth();
   const [token, setToken] = useState('');
   const [showInstructions, setShowInstructions] = useState(true);
 
   // Obtener estado actual
   const { data: status, refetch } = useQuery<TelegramStatus>({
-    queryKey: ['telegram-status'],
+    queryKey: ['telegram-status', currentBusiness?.id],
     queryFn: async () => {
-      const res = await fetch(`${API_URL}/api/telegram/status/${BUSINESS_ID}`);
+      if (!currentBusiness?.id) return { success: false, status: 'inactive' as const };
+      const res = await fetch(`${API_URL}/api/telegram/status/${currentBusiness.id}`);
       return res.json();
     },
+    enabled: !!currentBusiness?.id,
     refetchInterval: 5000,
   });
 
   // Inicializar bot
   const initBot = useMutation({
     mutationFn: async (botToken: string) => {
-      const res = await fetch(`${API_URL}/api/telegram/init/${BUSINESS_ID}`, {
+      if (!currentBusiness?.id) throw new Error('No business selected');
+      const res = await fetch(`${API_URL}/api/telegram/init/${currentBusiness.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: botToken }),
@@ -61,7 +66,8 @@ export default function TelegramSetup() {
   // Detener bot
   const stopBot = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${API_URL}/api/telegram/bot/${BUSINESS_ID}`, {
+      if (!currentBusiness?.id) throw new Error('No business selected');
+      const res = await fetch(`${API_URL}/api/telegram/bot/${currentBusiness.id}`, {
         method: 'DELETE',
       });
       return res.json();
@@ -90,7 +96,8 @@ export default function TelegramSetup() {
               <Send className="w-6 h-6 text-blue-600" />
               Configurar Telegram Bot
             </h1>
-            <div className="flex gap-3">
+            <div className="flex gap-3 items-center">
+              <BusinessSelector />
               <Button
                 onClick={() => navigate('/dashboard')}
                 variant="outline"
@@ -105,6 +112,17 @@ export default function TelegramSetup() {
               >
                 <Home className="w-4 h-4 mr-2" />
                 Dashboard
+              </Button>
+              <Button
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                variant="outline"
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Salir
               </Button>
             </div>
           </div>

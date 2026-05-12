@@ -22,10 +22,23 @@ export interface ResponseTimeByDay {
 }
 
 class ApiService {
+  private getAuthHeaders(): HeadersInit {
+    const token = localStorage.getItem('token');
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }
+
   private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const response = await fetch(`${API_URL}${endpoint}`, {
       headers: {
-        'Content-Type': 'application/json',
+        ...this.getAuthHeaders(),
         ...options?.headers,
       },
       ...options,
